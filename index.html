@@ -27,6 +27,7 @@
     const WHATSAPP_GROUP = "https://chat.whatsapp.com/E2EPeg3FAml2zYlM3xPdU9?mode=wwc";
     const WHATSAPP_CONTACT = `https://wa.me/91${PHONE}`;
     const UPI_ID = "9305659871@omni";
+    const PERMANENT_QR = "{QR_PLACEHOLDER}";
     const ADMIN_USER = "harsh_v.singh";
     const ADMIN_PASS = "shrijaislobe";
     const MAX_PER_SLOT = 2;
@@ -50,10 +51,12 @@
         try {
           const s = localStorage.getItem(key);
           return s ? JSON.parse(s) : initial;
-        } catch(e) { return initial; }
+        } catch (e) {
+          return initial;
+        }
       });
       useEffect(() => {
-        try { localStorage.setItem(key, JSON.stringify(state)); } catch(e){}
+        try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) {}
       }, [key, state]);
       return [state, setState];
     }
@@ -65,7 +68,6 @@
         window.addEventListener("hashchange", onHash);
         return () => window.removeEventListener("hashchange", onHash);
       }, []);
-      // simple routing
       return (
         <div className="min-h-screen">
           <Header />
@@ -132,7 +134,6 @@
         const id = "bk_"+Date.now();
         const newB = {...form, id, createdAt: Date.now(), status: "pending_payment"};
         setBookings([...bookings, newB]);
-        // navigate to payment
         window.location.hash = `#/payment/${id}`;
       }
 
@@ -182,10 +183,8 @@
                   <label>
                     <div className="text-sm">Throwables</div>
                     <div className="flex gap-2">
-                      <button type="button" className={`px-3 py-2 rounded ${form.throwables==='Limited' ? 'bg-indigo-600 text-white' : 'bg-white border'}`}
-                        onClick={()=>setField("throwables","Limited")}>Limited</button>
-                      <button type="button" className={`px-3 py-2 rounded ${form.throwables==='Unlimited' ? 'bg-indigo-600 text-white' : 'bg-white border'}`}
-                        onClick={()=>setField("throwables","Unlimited")}>Unlimited</button>
+                      <button type="button" className={`px-3 py-2 rounded ${form.throwables==='Limited' ? 'bg-indigo-600 text-white' : 'bg-white border'}`} onClick={()=>setField("throwables","Limited")}>Limited</button>
+                      <button type="button" className={`px-3 py-2 rounded ${form.throwables==='Unlimited' ? 'bg-indigo-600 text-white' : 'bg-white border'}`} onClick={()=>setField("throwables","Unlimited")}>Unlimited</button>
                     </div>
                   </label>
                 </div>
@@ -234,10 +233,11 @@
               <div className="p-4 rounded border">
                 <h3 className="font-semibold">Important</h3>
                 <ul className="list-disc ml-5 text-sm mt-2">
-                  <li>Send payment screenshot to WhatsApp number after paying (use the WhatsApp button on payment page).</li>
-                  <li>Rules list will be provided after sending screenshot to manager.</li>
+                  <li>Send payment screenshot to 9305659871 after paying (use the WhatsApp button on payment page).</li>
+                  <li>Rules list will be provided by the manager after sending screenshot to manager.</li>
                   <li>Payment is verified by admin — you will be redirected to success page once verified.</li>
                   <li>No booking without payment.</li>
+                  <li>Don't worry if you made the payment and slot isn't confirmed just contact the manager.</li>
                 </ul>
               </div>
             </aside>
@@ -249,16 +249,13 @@
     // ---- PAYMENT VIEW ----
     function PaymentView({ bookingId }){
       const [bookings, setBookings] = useLocalStorage("opera_bookings", []);
-      const [qr, setQr] = useLocalStorage("opera_qr", null);
-      const navigateTo = (h) => window.location.hash = h;
       const booking = bookings.find(b => b.id === bookingId);
       const [timer, setTimer] = useState(5*60);
 
       useEffect(() => {
-        if (!booking) return navigateTo("#/");
-        if (booking.status === "paid") return navigateTo("#/success/"+booking.id);
-        // start timer only if pending_payment
-        const t = setInterval(()=> setTimer(t => t-1), 1000);
+        if (!booking) return;
+        if (booking.status === "paid" || booking.status === "approved") return;
+        const t = setInterval(() => setTimer(t => t-1), 1000);
         return () => clearInterval(t);
       }, []);
 
@@ -267,18 +264,16 @@
           const updated = bookings.map(b => b.id === booking.id ? {...b, status: "timeout"} : b);
           setBookings(updated);
           alert("Payment time expired. Booking timed out.");
-          navigateTo("#/");
+          window.location.hash = "#/";
         }
       }, [timer]);
 
-      if (!booking) return null;
+      if (!booking) return <div className="p-6">Booking not found.</div>;
 
       function openWhatsApp(){
-        // set awaiting_admin so admin knows user sent screenshot externally
         const updated = bookings.map(b => b.id === booking.id ? {...b, status: "awaiting_admin"} : b);
         setBookings(updated);
-        window.open(WHATSAPP_CONTACT, "_blank");
-        alert("WhatsApp opened. Send the screenshot to this number and wait for admin verification.");
+        window.open("https://wa.me/919305659871", "_blank");
       }
 
       return (
@@ -309,8 +304,8 @@
               </div>
 
               <div className="p-3 rounded border mb-3">
-                <div className="text-sm">Organizer QR (from admin)</div>
-                {qr ? <img src={qr} className="w-40 h-40 object-contain mt-2 border" alt="qr" /> : <div className="text-sm mt-2">Organizer hasn't uploaded QR yet.</div>}
+                <div className="text-sm">Organizer QR (permanent)</div>
+                <img src={PERMANENT_QR} className="w-40 h-40 object-contain mt-2 border" alt="qr" />
               </div>
 
               <div className="p-3 rounded border mb-3">
@@ -323,7 +318,7 @@
                 <button onClick={()=>{ window.location.hash = "#/"; }} className="px-3 py-2 bg-gray-200 rounded">Cancel</button>
               </div>
 
-              <p className="text-sm mt-3">After sending the payment screenshot to the manager you'll receive the rules list. Admin must verify and mark your booking as Paid.</p>
+              <p className="text-sm mt-3">After sending the payment screenshot to the manager you'll receive the rules list. Admin must verify and mark your booking as Paid or Declined.</p>
             </div>
           </div>
         </div>
@@ -335,13 +330,27 @@
       const [bookings] = useLocalStorage("opera_bookings", []);
       const booking = bookings.find(b => b.id === bookingId);
       if (!booking) return <div className="p-6 glass rounded">Booking not found.</div>;
+      const status = booking.status;
       return (
         <div className="p-6 glass rounded-2xl shadow-lg text-center">
-          <h2 className="text-2xl font-bold text-emerald-600">Payment Successful!</h2>
-          <p className="mt-3">Booking confirmed for <strong>{booking.slot}</strong></p>
-          <p>Player IGN: {booking.playerIGN} | UID: {booking.playerUID}</p>
+          {status === "approved" ? (
+            <>
+              <h2 className="text-2xl font-bold text-emerald-600">Payment Successful!</h2>
+              <p className="mt-3">Booking confirmed for <strong>{booking.slot}</strong></p>
+            </>
+          ) : status === "cancelled" || status === "declined" ? (
+            <>
+              <h2 className="text-2xl font-bold text-red-600">Payment Declined</h2>
+              <p className="mt-3">Contact the manager on WhatsApp: <a href={`https://wa.me/919305659871`} className="underline">9305659871</a></p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold text-amber-600">Payment recorded — awaiting admin verification</h2>
+              <p className="mt-3">Admin will verify and update your booking status shortly.</p>
+            </>
+          )}
+          <p className="mt-3">Player IGN: {booking.playerIGN} | UID: {booking.playerUID}</p>
           <p className="mt-2">Team: {booking.teamName || '—'}</p>
-          <p className="mt-3">You will receive the rules list from manager shortly.</p>
           <a className="underline mt-3 block" href={WHATSAPP_GROUP} target="_blank" rel="noreferrer">Join WhatsApp Group</a>
         </div>
       );
@@ -350,21 +359,18 @@
     // ---- ADMIN APP ----
     function AdminApp(){
       const [bookings, setBookings] = useLocalStorage("opera_bookings", []);
-      const [qr, setQr] = useLocalStorage("opera_qr", null);
       const [auth, setAuth] = useLocalStorage("opera_admin_auth", { logged:false });
       const [user, setUser] = useState("");
       const [pass, setPass] = useState("");
+      const [loggedIn, setLoggedIn] = useState(auth.logged || false);
 
-      useEffect(()=> {
-        if (!auth.logged) {
-          // if not logged in, show login form
-        }
-      }, [auth]);
+      useEffect(()=> { setLoggedIn(auth.logged || false); }, [auth]);
 
       function tryLogin(e){
         e.preventDefault();
         if (user === ADMIN_USER && pass === ADMIN_PASS){
           setAuth({ logged:true });
+          setLoggedIn(true);
         } else {
           alert("Invalid credentials");
         }
@@ -372,28 +378,25 @@
 
       function logout(){
         setAuth({ logged:false });
+        setLoggedIn(false);
         window.location.hash = "#/";
       }
 
-      function handleQrUpload(e){
-        const f = e.target.files[0];
-        if (!f) return;
-        const r = new FileReader();
-        r.onload = () => setQr(r.result);
-        r.readAsDataURL(f);
-      }
-
       function markPaid(id){
-        const updated = bookings.map(b => b.id === id ? {...b, status: "paid"} : b);
+        const updated = bookings.map(b => b.id === id ? {...b, status: "approved"} : b);
         setBookings(updated);
-        alert("Marked paid.");
+        alert("Marked approved.");
+      }
+      function declineBooking(id){
+        const updated = bookings.map(b => b.id === id ? {...b, status: "declined"} : b);
+        setBookings(updated);
       }
       function cancelBooking(id){
         const updated = bookings.map(b => b.id === id ? {...b, status: "cancelled"} : b);
         setBookings(updated);
       }
 
-      if (!auth.logged){
+      if (!loggedIn){
         return (
           <div className="p-6 glass rounded-2xl max-w-md mx-auto">
             <h3 className="text-xl font-bold mb-3">Admin Login</h3>
@@ -402,7 +405,6 @@
               <input value={pass} onChange={e=>setPass(e.target.value)} placeholder="password" type="password" className="w-full p-2 rounded border" />
               <div className="flex gap-2">
                 <button className="px-3 py-2 bg-indigo-600 text-white rounded">Login</button>
-                <button type="button" className="px-3 py-2 bg-gray-200 rounded" onClick={()=>{ setUser(ADMIN_USER); setPass(ADMIN_PASS); }}>Fill test</button>
               </div>
             </form>
           </div>
@@ -414,8 +416,7 @@
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold">Admin Dashboard</h3>
             <div className="flex gap-2 items-center">
-              <label className="text-sm">Upload Organizer QR</label>
-              <input type="file" accept="image/*" onChange={handleQrUpload} />
+              <div className="text-sm">Organizer QR (permanent)</div>
               <button onClick={logout} className="px-3 py-1 bg-gray-200 rounded">Logout</button>
             </div>
           </div>
@@ -427,26 +428,32 @@
                   <th className="p-2 text-left">ID</th>
                   <th className="p-2 text-left">IGN</th>
                   <th className="p-2 text-left">UID</th>
+                  <th className="p-2 text-left">Team</th>
                   <th className="p-2 text-left">Slot</th>
+                  <th className="p-2 text-left">Mode</th>
+                  <th className="p-2 text-left">Throwables</th>
                   <th className="p-2 text-left">Amt</th>
                   <th className="p-2 text-left">Status</th>
                   <th className="p-2 text-left">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {bookings.length === 0 && <tr><td colSpan="7" className="p-4 text-center">No bookings yet</td></tr>}
+                {bookings.length === 0 && <tr><td colSpan="10" className="p-4 text-center">No bookings yet</td></tr>}
                 {bookings.map(b => (
                   <tr key={b.id} className="border-b">
                     <td className="p-2">{b.id}</td>
                     <td className="p-2">{b.playerIGN}</td>
                     <td className="p-2">{b.playerUID}</td>
+                    <td className="p-2">{b.teamName || '—'}</td>
                     <td className="p-2">{b.slot}</td>
+                    <td className="p-2">{b.mode}</td>
+                    <td className="p-2">{b.throwables}</td>
                     <td className="p-2">₹{b.amount}</td>
                     <td className="p-2">{b.status}</td>
                     <td className="p-2 space-x-2">
-                      {b.status !== "paid" && <button onClick={()=>markPaid(b.id)} className="px-2 py-1 bg-green-500 text-white rounded">Mark Paid</button>}
-                      {b.status !== "cancelled" && <button onClick={()=>cancelBooking(b.id)} className="px-2 py-1 bg-red-500 text-white rounded">Cancel</button>}
-                      {b.status === "awaiting_admin" && <span className="text-sm">Awaiting</span>}
+                      <button onClick={() => markPaid(b.id)} className="px-2 py-1 bg-green-500 text-white rounded">Approve</button>
+                      <button onClick={() => declineBooking(b.id)} className="px-2 py-1 bg-yellow-500 text-white rounded">Decline</button>
+                      <button onClick={() => cancelBooking(b.id)} className="px-2 py-1 bg-red-500 text-white rounded">Cancel</button>
                     </td>
                   </tr>
                 ))}
@@ -456,7 +463,7 @@
 
           <div className="mt-4">
             <p className="text-sm">Uploaded QR will appear on payment page for users.</p>
-            {qr && <img src={qr} className="w-28 h-28 mt-2 border" alt="qr" />}
+            <img src={PERMANENT_QR} className="w-28 h-28 mt-2 border" alt="qr" />
           </div>
         </div>
       );
